@@ -12,45 +12,74 @@ new Vue({
 		addTodo() {
 			const title = this.todoTitle.trim();
 			if (!title) return;
-			fetch('/api/todo', {
+
+			const query = `
+				mutation{
+					createTodo(todo: {title: "${title}"}){
+						title id done createdAt updatedAt
+					}
+				}
+			`
+			fetch('/graphql', {
 				method: 'post',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					'Accept': 'application/json'
 				},
-				body: JSON.stringify({ title })
+				body: JSON.stringify({ query })
 			})
 				.then(res => res.json())
-				.then(({ todo }) => {
+				.then(response => {
+					const todo = response.data.createTodo
 					this.todos.push(todo)
 					this.todoTitle = '';
 				})
 				.catch(e => console.log(e))
 		},
 		removeTodo(id) {
-			fetch('/api/todo/' + id, {
-				method: 'delete'
+			const query = `
+				mutation{
+					removeTodo(id: "${id}")
+				}
+			`
+			fetch('/graphql', {
+				method: 'post',
+				headers: {
+					'Content-Type': 'application/json',
+					'Accept': 'application/json'
+				},
+				body: JSON.stringify({ query })
 			})
-				.then(() => {
+				.then(res => res.json())
+				.then(response => {
 					this.todos = this.todos.filter((t) => t.id !== id);
 				})
 				.catch(e => console.log(e))
 		},
 		completeTodo(id) {
-			fetch('/api/todo/' + id, {
-				method: 'put',
+			console.log(id);
+
+			const query = `
+				mutation {
+					completeTodo(id: "${id}") {
+						updatedAt
+					}
+				}
+			`
+			fetch('/graphql', {
+				method: 'post',
 				headers: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					'Accept': 'application/json'
 				},
-				body: JSON.stringify({ done: true })
+				body: JSON.stringify({ query })
 			})
 				.then(res => res.json())
-				.then(({ todo }) => {
-					console.log(todo);
+				.then(response => {
+					console.log(response);
 					
-					console.log(this.todos);
-					
-					const idx = this.todos.findIndex(x => x.id === todo.id)
-					this.todos[idx].updatedAt = todo.updatedAt
+					const idx = this.todos.findIndex(x => x.id === id)
+					this.todos[idx].updatedAt = response.data.completeTodo.updatedAt
 				})
 				.catch(e => console.log(e))
 		}
@@ -70,17 +99,33 @@ new Vue({
 				options.minute = '2-digit'
 				options.second = '2-digit'
 			}
-			return new Intl.DateTimeFormat('ru-RU', options).format(new Date(value));
+			return new Intl.DateTimeFormat('ru-RU', options).format(new Date(+value));
 		}
 	},
 	created() {
 		this.$vuetify.theme.dark = true;
-		fetch('/api/todo', {
-			method: 'get'
+		const query = `
+			query {
+				getTodos{
+					id
+					title
+					done
+					createdAt
+					updatedAt
+				}
+			}
+		`
+		fetch('/graphql', {
+			method: 'post',
+			headers: {
+				'Content-Type': 'application/json',
+				'Accept': 'application/json'
+			},
+			body: JSON.stringify({ query })
 		})
 			.then(res => res.json())
-			.then(todos => {
-				this.todos = todos
+			.then(response => {
+				this.todos = response.data.getTodos
 			})
 			.catch(e => console.log(e))
 	},
